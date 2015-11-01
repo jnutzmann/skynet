@@ -1,0 +1,35 @@
+
+{% extends "base.html" %}
+
+{% block title %} {{ s.name }} {% endblock %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block header %} {{ s.name }} <small> {{ s.serial_port }} </small> {% endblock %}
+
+{% block content %}
+{{ super() }}
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    function receive(data) {
+        console.log(data);
+    }
+
+    var source = new EventSource('/serial/stream/{{ port }}');
+
+	source.addEventListener('message', function(e) {
+	    receive($.parseJSON(e.data));
+	});
+
+
+</script>
+
+{% endblock %}

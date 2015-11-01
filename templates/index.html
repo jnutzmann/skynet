@@ -1,0 +1,117 @@
+
+{% extends "base.html" %}
+
+{% block title %} Index {% endblock %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block header %} Sky.Net Dashboard <small>A Full Steam Solution</small> {% endblock %}
+
+{% block content %}
+{{ super() }}
+<div class="col-lg-4">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-exchange fa-fw"></i> Unattached Serial Ports</h3>
+        </div>
+        <div class="panel-body">
+            <div class="list-group">
+                {% for p in avail_ports %}
+                <a href="#" class="list-group-item avail-port" data-port="{{ p }}">
+                    <!--<span class="badge">4 minutes ago</span>-->
+                    <i class="fa fa-fw fa-plus-square"></i> {{ p }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-4">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-exchange fa-fw"></i> Attached Serial Ports</h3>
+        </div>
+        <div class="panel-body">
+            <div class="list-group">
+                {% for p in conn_ports %}
+                <a href="/serial/view/{{ p }}" class="list-group-item">
+                    <!--<span class="badge">just now</span>-->
+                    <i class="fa fa-fw fa-check-square text-success"></i> {{ conn_ports[p].name }} <br/> {{ p }} ({{ conn_ports[p].baud }})
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirm-modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Attach Serial Port</h4>
+            </div>
+
+            <div class="modal-body">
+                <div class="confirm-modal-body">
+                    <label class="control-label">Port</label>
+                    <input id="attach-port" class="form-control" type="text">
+                </div>
+
+                <div class="confirm-modal-body">
+                    <label class="control-label"> Baud Rate</label>
+                    <input id="attach-baud" class="form-control" type="number">
+                </div>
+
+                <div class="confirm-modal-body">
+                    <label class="control-label"> Name</label>
+                    <input id="attach-name" class="form-control" type="text">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default confirm-button" data-dismiss="modal">Cancel</button>
+                <button id="attach-button" type="button" class="btn btn-primary confirm-button">Attach</button>
+            </div>
+
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+$(".avail-port").click(function() {
+    $("#attach-port").val($(this).attr("data-port"));
+    $("#confirm-modal").modal();
+});
+
+$("#attach-button").click(function() {
+    var data = {};
+    data.port = $("#attach-port").val();
+    data.baud = $("#attach-baud").val();
+    data.name = $("#attach-name").val();
+
+    $.ajax({
+        url: "/serial/connect",
+        type: "get",
+        data: data,
+        success: function() {
+            location.reload();
+        },
+        error: function () {
+            location.reload();
+            // TODO: something else
+        }
+    });
+});
+
+</script>
+
+{% endblock %}
