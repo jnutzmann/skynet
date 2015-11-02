@@ -13,12 +13,15 @@
 import serial
 import time
 from threading import Thread
+import struct
 
 
 class SkyNetSerial(Thread):
 
     ESCAPE_CHARACTER = b'\x7D'
-    START_OF_FRAME = b'\x7E'
+    START_CHARACTER = b'\x7E'
+    ESCAPE_VALUE = 0x7D
+    START_VALUE = 0x7E
 
     def __init__(self, serial_port='/dev/ttyUSB0', baud=500000, name=''):
 
@@ -41,6 +44,36 @@ class SkyNetSerial(Thread):
     def get(self):
         return self.data_queue.get()
 
+    def send(self, address, rtr, data):
+
+        if not self.running:
+            return False
+
+        if len(data) > 15:
+            return False
+
+        to_send = self.START_CHARACTER
+
+        if rtr:
+            rtr = 1
+        else:
+            rtr = 0
+
+        # add the metadata
+        unescaped_data = [address//8, (address % 8)*32+rtr*16+len(data)] + data
+
+        # add the CRC
+        unescaped_data.append(sum(unescaped_data) % 256)
+
+        for d in unescaped_data:
+            if d == self.ESCAPE_VALUE or d == self.START_VALUE:
+                to_send += self.ESCAPE_CHARACTER
+                d ^= 0x20
+            to_send += struct.pack('>B', d)
+
+        print(to_send)
+        self._port_handle.write(to_send)
+
     def run(self):
         self._port_handle = serial.Serial(self.serial_port, self.baud)
 
@@ -56,14 +89,14 @@ class SkyNetSerial(Thread):
 
         # wait for the next start-of-frame
         c = self._port_handle.read()
-        while c != self.START_OF_FRAME:
+        while c != self.START_CHARACTER:
             c = self._port_handle.read()
 
         while self.running:
             try:
                 c = self._port_handle.read()
 
-                if c == self.START_OF_FRAME:
+                if c == self.START_CHARACTER:
                     timestamp = time.time()
                     data_bytes = []
                     meta_bytes = []

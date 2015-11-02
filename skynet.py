@@ -41,7 +41,6 @@ app = Flask(__name__)
 
 serial_connections = {}
 
-
 def get_serial_ports():
     ports = []
     for dirname, dirnames, filenames in os.walk('/dev/serial/by-id/'):
@@ -74,15 +73,29 @@ def serial_connect():
     s.start()
     serial_connections[_id] = s
 
-    return "OK"
+    return ""
 
 
 @app.route('/serial/view/<port>')
 def serial_view(port):
     if port not in serial_connections:
-        print('aborting')
         abort(404)
     return render_template('default.html', s=serial_connections[port], port=port)
+
+
+@app.route('/serial/send/<port>', methods=["POST"])
+def serial_send(port):
+
+    if port not in serial_connections:
+        abort(404)
+
+    params = request.get_json()
+    address = params['address']
+    rtr = params['rtr']
+    data = params['data']
+
+    serial_connections[port].send(address, rtr, data)
+    return ""
 
 
 @app.route('/serial/stream/<port>')
