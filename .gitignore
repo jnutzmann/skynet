@@ -2,3 +2,4 @@
 *.pyc
 build/
 *.idea/
+static/packets.js

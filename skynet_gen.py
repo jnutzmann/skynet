@@ -15,6 +15,8 @@
 import argparse
 import yaml
 import sys
+import json
+import os
 
 c_types = {
     'uint8_t': 1,
@@ -87,10 +89,17 @@ class SkyNetPacket:
         self.address = address
         self.description = packet.get('description')
         self.board = board
+        self.endian = packet.get('endian')
         self.data = []
 
         for field in packet.get('data'):
-            d = SkyNetData(field.get('name'), field.get('description'), field.get('type'))
+            d = SkyNetData(
+                field.get('name'),
+                field.get('description'),
+                field.get('type'),
+                field.get('unit'),
+                field.get('scale'),
+                field.get('decimals'))
             self.data.append(d)
 
     def get_parameters(self):
@@ -142,13 +151,16 @@ class SkyNetPacket:
 
 class SkyNetData:
 
-    def __init__(self, name, description, _type):
+    def __init__(self, name, description, _type, unit, scale, decimals):
 
         if name is None or name is "":
             raise Exception('Data name is a required field.')
 
         self.name = name
         self.description = description
+        self.unit = unit
+        self.scale = scale
+        self.decimals = decimals
 
         if _type not in c_types:
             raise Exception('Unknown data type: %s' % _type)
@@ -374,6 +386,41 @@ void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
         with open(filename, 'w') as f:
             f.write(txt)
 
+    def generate_js_packet_list(self, filename):
+
+        packet_list = {}
+        out = []
+
+        for board_name in self.boards:
+            board = self.boards[board_name]
+            for packet_name in board.packets:
+                packet = board.packets[packet_name]
+                packet_list[packet.address] = packet
+
+        for p in sorted(packet_list.keys()):
+            packet = packet_list[p]
+            j = {
+                "name": packet.name,
+                "board": packet.board,
+                "description": packet.description,
+                "endian": packet.endian,
+                "address": packet.address,
+                "data": []
+            }
+
+            for field in packet.data:
+                j["data"].append({
+                    "name": field.name,
+                    "description": field.description,
+                    "type": field.type,
+                    "unit": field.unit,
+                    "scale": field.scale,
+                    "decimals": field.decimals
+                })
+            out.append(j)
+
+        with open(filename, 'w') as f:
+            f.write("var packets = " + json.dumps(out) + ";")
 
 
 if __name__ == "__main__":
@@ -408,16 +455,27 @@ if __name__ == "__main__":
         print (TermColors.FAIL, "[FAIL]\n", str(e), TermColors.ENDC)
         sys.exit(1)
 
-    print("Generating deorbit.c ...", end="")
-    s.generate_deorbit_c(args.dest + "deorbit.c", args.board)
-    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
-    print("Generating deorbit.h ...", end="")
-    s.generate_deorbit_h(args.dest + "deorbit.h")
-    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
-    print("Generating orbit.h ...", end="")
-    s.generate_orbit_h(args.dest + "orbit.h")
-    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
-    print("Generating orbit.c ...", end="")
-    s.generate_orbit_c(args.dest + "orbit.c")
+    f = args.dest + "deorbit.c"
+    print("Generating %s ..." % f, end="")
+    s.generate_deorbit_c(f, args.board)
     print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
 
+    f = args.dest + "deorbit.h"
+    print("Generating %s ..." % f, end="")
+    s.generate_deorbit_h(f)
+    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
+
+    f = args.dest + "orbit.c"
+    print("Generating %s ..." % f, end="")
+    s.generate_orbit_c(f)
+    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
+
+    f = args.dest + "orbit.h"
+    print("Generating %s ..." % f, end="")
+    s.generate_orbit_h(f)
+    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
+
+    f = "%s/static/packets.js" % os.path.dirname(__file__)
+    print("Generating %s ..." % f, end="")
+    s.generate_js_packet_list(f)
+    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
