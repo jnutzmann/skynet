@@ -17,6 +17,8 @@ import json
 from skynet_serial import SkyNetSerial
 from flask import Flask, render_template, request, Response, abort
 from queue import Queue
+import time
+from threading import Thread
 
 
 class ServerSentEvent(object):
@@ -37,6 +39,38 @@ class ServerSentEvent(object):
         lines = ["%s: %s" % (v, k)
                  for k, v in self.desc_map.items() if k]
         return "%s\n\n" % "\n".join(lines)
+
+
+class SerialLogger(Thread):
+
+    def __init__(self, port):
+        Thread.__init__(self)
+        self.port = port
+        self.q = Queue()
+        self.s = serial_connections[port]
+
+        def listener(timestamp, address, rtr, data_length, data_bytes):
+            o = {
+                "timestamp": timestamp,
+                "address": address,
+                "rtr": rtr,
+                "length": data_length,
+                "data": data_bytes
+            }
+
+            self.q.put(o)
+        self.listener = listener
+        self.s.listeners.append(self.listener)
+
+    def run(self):
+        with open("%s_%i.log" % (self.s.name, time.time()), 'w') as f:
+            try:
+                while True:
+                    r = self.q.get()
+                    f.write(json.dumps(r) + "\n")
+
+            except Exception:
+                self.s.listeners.remove(self.listener)
 
 
 app = Flask(__name__)
@@ -74,6 +108,9 @@ def serial_connect():
     s = SkyNetSerial(serial_port=port, baud=baud, name=name)
     s.start()
     serial_connections[_id] = s
+
+    logger = SerialLogger(_id)
+    logger.start()
 
     return ""
 
@@ -130,6 +167,7 @@ def serial_stream(port):
             s.listeners.remove(listener)
 
     return Response(gen(), mimetype="text/event-stream")
+
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
