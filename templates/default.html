@@ -21,6 +21,7 @@
                     <th>Address</th>
                     <th>Board</th>
                     <th>Name</th>
+                    <th>Count</th>
                     <th>Data</th>
                     <th>Value</th>
                 </tr>
@@ -151,6 +152,13 @@
                 var disp = getDisplay(data, field);
                 $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
             }
+
+            $('tr[data-address="'+data.address+'"]')
+                .css("background-color", "#B0E2FF");
+            $('tr[data-address="'+data.address+'"]')
+                .animate({backgroundColor: 'transparent'}, 500);
+            var count = parseInt($('td[data-address-count="'+data.address+'"]').html())+1
+            $('td[data-address-count="'+data.address+'"]').html(count);
         }
         else
         {
@@ -172,6 +180,10 @@
                     row.append($("<td></td>")
                                    .attr("rowspan", fields.length)
                                    .html(data.name));
+                    row.append($("<td></td>")
+                                   .attr("rowspan", fields.length)
+                                   .attr("data-address-count", data.address)
+                                   .html("1"));
                 }
 
                 row.append($("<td></td>").html(field));

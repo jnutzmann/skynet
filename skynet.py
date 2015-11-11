@@ -12,77 +12,18 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
-import os
-import json
-from skynet_serial import SkyNetSerial
 from flask import Flask, render_template, request, Response, abort
+import json
+
 from queue import Queue
-import time
-from threading import Thread
 
-
-class ServerSentEvent(object):
-
-    def __init__(self, data):
-        self.data = data
-        self.event = None
-        self.id = None
-        self.desc_map = {
-            self.data : "data",
-            self.event : "event",
-            self.id : "id"
-        }
-
-    def encode(self):
-        if not self.data:
-            return ""
-        lines = ["%s: %s" % (v, k)
-                 for k, v in self.desc_map.items() if k]
-        return "%s\n\n" % "\n".join(lines)
-
-
-class SerialLogger(Thread):
-
-    def __init__(self, port):
-        Thread.__init__(self)
-        self.port = port
-        self.q = Queue()
-        self.s = serial_connections[port]
-
-        def listener(timestamp, address, rtr, data_length, data_bytes):
-            o = {
-                "timestamp": timestamp,
-                "address": address,
-                "rtr": rtr,
-                "length": data_length,
-                "data": data_bytes
-            }
-
-            self.q.put(o)
-        self.listener = listener
-        self.s.listeners.append(self.listener)
-
-    def run(self):
-        with open("%s_%i.log" % (self.s.name, time.time()), 'w') as f:
-            try:
-                while True:
-                    r = self.q.get()
-                    f.write(json.dumps(r) + "\n")
-
-            except Exception:
-                self.s.listeners.remove(self.listener)
+from skynet_serial import SkyNetSerial, get_serial_ports
+from skynet_logger import SkyNetLogger
+from server_sent_events import ServerSentEvent
 
 
 app = Flask(__name__)
-
 serial_connections = {}
-
-def get_serial_ports():
-    ports = []
-    for dirname, dirnames, filenames in os.walk('/dev/serial/by-id/'):
-        for filename in filenames:
-            ports.append(filename)
-    return ports
 
 
 @app.route('/')
@@ -95,6 +36,20 @@ def index():
 
     return render_template('index.html', avail_ports=avail_ports, conn_ports=conn_ports)
 
+
+@app.route('/serial/view/<port>')
+def serial_view(port):
+    if port not in serial_connections:
+        abort(404)
+    return render_template('default.html', s=serial_connections[port], port=port)
+
+
+@app.route('/logalyzer')
+def logalyzer_view():
+    return render_template('logalyzer.html')
+
+
+# =============== API CALLS ==================
 
 @app.route('/serial/connect')
 def serial_connect():
@@ -109,17 +64,10 @@ def serial_connect():
     s.start()
     serial_connections[_id] = s
 
-    logger = SerialLogger(_id)
+    logger = SkyNetLogger(_id, serial_connections[_id])
     logger.start()
 
     return ""
-
-
-@app.route('/serial/view/<port>')
-def serial_view(port):
-    if port not in serial_connections:
-        abort(404)
-    return render_template('default.html', s=serial_connections[port], port=port)
 
 
 @app.route('/serial/send/<port>', methods=["POST"])

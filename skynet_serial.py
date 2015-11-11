@@ -12,10 +12,19 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
+import os
 import serial
+import struct
 import time
 from threading import Thread
-import struct
+
+
+def get_serial_ports():
+    ports = []
+    for dirname, dirnames, filenames in os.walk('/dev/serial/by-id/'):
+        for filename in filenames:
+            ports.append(filename)
+    return ports
 
 
 class SkyNetSerial(Thread):
