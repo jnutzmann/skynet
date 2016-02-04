@@ -55,6 +55,10 @@ def logalyzer_view():
 def serial_connect():
 
     _id = request.args.get('port')
+
+    if _id in serial_connections:
+        return ""
+
     baud = int(request.args.get('baud'))
     name = request.args.get('name')
 
@@ -64,8 +68,8 @@ def serial_connect():
     s.start()
     serial_connections[_id] = s
 
-    logger = SkyNetLogger(_id, serial_connections[_id])
-    logger.start()
+    #logger = SkyNetLogger(_id, serial_connections[_id])
+    #logger.start()
 
     return ""
 
