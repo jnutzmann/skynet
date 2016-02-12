@@ -386,7 +386,7 @@ void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
         with open(filename, 'w') as f:
             f.write(txt)
 
-    def generate_js_packet_list(self, filename):
+    def generate_packet_list(self):
 
         packet_list = {}
         out = []
@@ -418,9 +418,15 @@ void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
                     "decimals": field.decimals
                 })
             out.append(j)
+            return out
 
+    def generate_js_packet_list(self, filename):
         with open(filename, 'w') as f:
-            f.write("var packets = " + json.dumps(out) + ";")
+            f.write("var packets = " + json.dumps(self.generate_packet_list()) + ";")
+
+    def generate_json_packet_list(self, filename):
+        with open(filename, 'w') as f:
+            f.write(json.dumps(self.generate_packet_list()))
 
 
 if __name__ == "__main__":
@@ -478,4 +484,9 @@ if __name__ == "__main__":
     f = "%s/static/packets.js" % os.path.dirname(__file__)
     print("Generating %s ..." % f, end="")
     s.generate_js_packet_list(f)
+    print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
+
+    f = "%s/static/packets.json" % os.path.dirname(__file__)
+    print("Generating %s ..." % f, end="")
+    s.generate_json_packet_list(f)
     print (TermColors.OKGREEN, "[SUCCESS]", TermColors.ENDC)
