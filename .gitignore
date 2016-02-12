@@ -2,5 +2,5 @@
 *.pyc
 build/
 *.idea/
-static/packets.js
+static/packets.js*
 *.log
