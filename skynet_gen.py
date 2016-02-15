@@ -418,7 +418,8 @@ void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
                     "decimals": field.decimals
                 })
             out.append(j)
-            return out
+
+        return out
 
     def generate_js_packet_list(self, filename):
         with open(filename, 'w') as f:
@@ -426,7 +427,7 @@ void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
 
     def generate_json_packet_list(self, filename):
         with open(filename, 'w') as f:
-            f.write(json.dumps(self.generate_packet_list()))
+            f.write(json.dumps(self.generate_packet_list(), sort_keys=True, indent=4, separators=(',', ': ')))
 
 
 if __name__ == "__main__":
