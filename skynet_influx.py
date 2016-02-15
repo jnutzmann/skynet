@@ -24,7 +24,26 @@ class SkyNetLogger(Thread):
         self.q = Queue()
         self.s = serial_connection
 
-        def listener(timestamp, address, rtr, data_length, data_bytes):
+        def listener(timestamp, address, rtr, data_length, ...
+                        data_bytes, name, origin="device"):
+            
+            point = {
+                "measurement": "analog",
+                "time": timestamp,
+                "tags": {
+                    "board": "microbrushless",
+                    "name": name,
+                    "rtr": rtr,
+                    "origin": origin
+                },
+                "fields": {
+                    "i_motor": 0.064,
+                    "vdd_24v0": 24.101,
+                    "v_aux": 0.01
+                }
+            }
+
+
             o = {
                 "timestamp": timestamp,
                 "address": address,
