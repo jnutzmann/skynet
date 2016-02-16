@@ -14,54 +14,50 @@ import json
 import time
 from threading import Thread
 from queue import Queue
+from skynet_parse import SkynetDecode
+from influxdb import InfluxDBClient
 
 
-class SkyNetLogger(Thread):
+
+class SkyNetDBLogger(Thread):
 
     def __init__(self, port, serial_connection):
         Thread.__init__(self)
         self.port = port
         self.q = Queue()
         self.s = serial_connection
+        with open('static/packets.json') as f:
+            self.decoder = SkynetDecode(f)
 
-        def listener(timestamp, address, rtr, data_length, ...
-                        data_bytes, name, origin="device"):
+        self.client = InfluxDBClient('localhost', 8086, 'root', 'root', 'skynet')
+        self.client.create_database('skynet')
+
+        def listener(timestamp, address, rtr, data_length, data_bytes, origin="device"):
             
+            decoded = self.decoder.decode(address, rtr, data_bytes)
+
             point = {
-                "measurement": "analog",
-                "time": timestamp,
+                "measurement": decoded["name"],
+                "time": int(timestamp*1e9),
                 "tags": {
-                    "board": "microbrushless",
-                    "name": name,
-                    "rtr": rtr,
+                    "board": decoded["board"],
+                    "name": self.s.name,
+                    "rtr": str(rtr),
                     "origin": origin
                 },
-                "fields": {
-                    "i_motor": 0.064,
-                    "vdd_24v0": 24.101,
-                    "v_aux": 0.01
-                }
+                "fields": decoded["data"]
             }
 
+            self.q.put(point)
 
-            o = {
-                "timestamp": timestamp,
-                "address": address,
-                "rtr": rtr,
-                "length": data_length,
-                "data": data_bytes
-            }
-
-            self.q.put(o)
         self.listener = listener
         self.s.listeners.append(self.listener)
 
     def run(self):
-        with open("%s_%i.log" % (self.s.name, time.time()), 'w') as f:
-            try:
-                while True:
-                    r = self.q.get()
-                    f.write(json.dumps(r) + "\n")
+        try:
+            while True:
+                r = self.q.get()
+                self.client.write_points([r])
 
-            except Exception:
-                self.s.listeners.remove(self.listener)
+        except Exception:
+            self.s.listeners.remove(self.listener)

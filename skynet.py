@@ -19,12 +19,12 @@ from queue import Queue
 
 from skynet_serial import SkyNetSerial, get_serial_ports
 from skynet_logger import SkyNetLogger
+from skynet_influx import SkyNetDBLogger
 from server_sent_events import ServerSentEvent
 
 
 app = Flask(__name__)
 serial_connections = {}
-
 
 @app.route('/')
 def index():
@@ -68,8 +68,8 @@ def serial_connect():
     s.start()
     serial_connections[_id] = s
 
-    #logger = SkyNetLogger(_id, serial_connections[_id])
-    #logger.start()
+    logger = SkyNetDBLogger(_id, serial_connections[_id])
+    logger.start()
 
     return ""
 

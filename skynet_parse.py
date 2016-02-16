@@ -1,5 +1,6 @@
 
 import json
+import struct
 
 class SkynetDecode:
 
@@ -15,9 +16,9 @@ class SkynetDecode:
 
 		return by_address
 
-	def decode(address, rtr, data_length, data_bytes):
+	def decode(self, address, rtr, data_bytes):
 
-		if address not in self.packets:
+		if address not in self.packets_by_address:
 			return None
 
 		d = self.packets_by_address[address]
@@ -38,11 +39,34 @@ class SkynetDecode:
 		for field in d["data"]:
 
 			if field["type"] == "uint8_t":
-				pass
-			elif field["type"] == "int8_t"
+				format = "B"
+				length = 1
+			elif field["type"] == "int8_t":
+				format = "b"
+				length = 1
+			elif field["type"] == "uint16_t":
+				format = endian + "H"
+				length = 2
+			elif field["type"] == "int16_t":
+				format = endian + "h"
+				length = 2
+			elif field["type"] == "uint32_t":
+				format =  endian + "I"
+				length = 4
+			elif field["type"] == "int32_t":
+				format = endian + "i"
+				length = 4
+			elif field["type"] == "float":
+				format = endian + "f"
+				length = 4
 
+			bytes = bytearray(data_bytes[byte:byte+length])
+			data = struct.unpack(format, bytes)[0]
+			packet["data"][field["name"]] = data
+			byte += length
+			# TODO: implement scale
 
-
+		return packet
 
 
 	def print_defs(self):
