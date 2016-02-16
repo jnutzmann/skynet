@@ -1,4 +1,4 @@
-# Copyright (c) 2015, Jonathan Nutzmann
+# Copyright (c) 2016, Jonathan Nutzmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,12 +26,19 @@ class SkyNetDBLogger(Thread):
         self.port = port
         self.q = Queue()
         self.s = serial_connection
+        
         with open('static/packets.json') as f:
             self.decoder = SkynetDecode(f)
 
+        # TODO: make this configurable.
+        # connect to the influx server
         self.client = InfluxDBClient('localhost', 8086, 'root', 'root', 'skynet')
-        self.client.create_database('skynet')
+        
+        # check to see if the database exists.  If not, create it.
+        if "skynet" not in [d["name"] for d in self.client.get_list_database()]:
+            self.client.create_database('skynet')
 
+        # create a listener that can be attached to a serial port.
         def listener(timestamp, address, rtr, data_length, data_bytes, origin="device"):
             
             decoded = self.decoder.decode(address, rtr, data_bytes)
@@ -56,8 +63,15 @@ class SkyNetDBLogger(Thread):
     def run(self):
         try:
             while True:
-                r = self.q.get()
-                self.client.write_points([r])
+                points = []
+                time.sleep(1)  # wait for more points (only make influx call 1/sec)
+                
+                points.append(self.q.get())
+                
+                while not self.q.empty():
+                    points.append(self.q.get())
+                
+                self.client.write_points(points)
 
         except Exception:
             self.s.listeners.remove(self.listener)

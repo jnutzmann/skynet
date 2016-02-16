@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2015, Jonathan Nutzmann
+# Copyright (c) 2016, Jonathan Nutzmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,7 @@ import json
 from queue import Queue
 
 from skynet_serial import SkyNetSerial, get_serial_ports
-from skynet_logger import SkyNetLogger
-from skynet_influx import SkyNetDBLogger
+from logger_influx import SkyNetDBLogger
 from server_sent_events import ServerSentEvent
 
 
