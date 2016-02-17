@@ -72,6 +72,7 @@ class SkyNetDBLogger(Thread):
                     points.append(self.q.get())
                 
                 self.client.write_points(points)
+                print(len(points))
 
         except Exception:
             self.s.listeners.remove(self.listener)
