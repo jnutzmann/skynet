@@ -89,6 +89,7 @@
 
 $(".avail-port").click(function() {
     $("#attach-port").val($(this).attr("data-port"));
+    $("#attach-baud").val(460800);
     $("#confirm-modal").modal();
 });
 
