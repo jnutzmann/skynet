@@ -43,9 +43,9 @@ def serial_view(port):
     return render_template('default.html', s=serial_connections[port], port=port)
 
 
-@app.route('/logalyzer')
+@app.route('/visualizer')
 def logalyzer_view():
-    return render_template('logalyzer.html')
+    return render_template('visualizer.html')
 
 
 # =============== API CALLS ==================

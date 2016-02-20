@@ -7,11 +7,11 @@
     {{ super() }}
 {% endblock %}
 
-{% block header %} Sky.Net Dashboard <small>A Full Steam Solution</small> {% endblock %}
+{% block header %} Connections {% endblock %}
 
 {% block content %}
 {{ super() }}
-<div class="col-lg-4">
+<div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title"><i class="fa fa-exchange fa-fw"></i> Unattached Serial Ports</h3>
@@ -20,7 +20,6 @@
             <div class="list-group">
                 {% for p in avail_ports %}
                 <a href="#" class="list-group-item avail-port" data-port="{{ p }}">
-                    <!--<span class="badge">4 minutes ago</span>-->
                     <i class="fa fa-fw fa-plus-square"></i> {{ p }}
                 </a>
                 {% endfor %}
@@ -29,7 +28,7 @@
     </div>
 </div>
 
-<div class="col-lg-4">
+<div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title"><i class="fa fa-exchange fa-fw"></i> Attached Serial Ports</h3>
@@ -38,8 +37,8 @@
             <div class="list-group">
                 {% for p in conn_ports %}
                 <a href="/serial/view/{{ p }}" class="list-group-item">
-                    <!--<span class="badge">just now</span>-->
-                    <i class="fa fa-fw fa-check-square text-success"></i> {{ conn_ports[p].name }} <br/> {{ p }} ({{ conn_ports[p].baud }})
+                    <i class="fa fa-fw fa-check-square text-success"></i> 
+                    <strong>{{ conn_ports[p].name }}</strong> - {{ p }} ({{ conn_ports[p].baud }} baud)
                 </a>
                 {% endfor %}
             </div>
@@ -116,3 +115,5 @@ $("#attach-button").click(function() {
 </script>
 
 {% endblock %}
+
+{% block active_menu %}connections{% endblock %}

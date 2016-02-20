@@ -12,46 +12,50 @@
 {% block content %}
 {{ super() }}
 
-<div class="col-lg-6">
-    <h2>Received Packets</h2>
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover">
-            <thead>
-                <tr>
-                    <th>Address</th>
-                    <th>Board</th>
-                    <th>Name</th>
-                    <th>Count</th>
-                    <th>Data</th>
-                    <th>Value</th>
-                </tr>
-            </thead>
-            <tbody id="packet_table_body"></tbody>
-        </table>
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">Received Packets</div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Board</th>
+                            <th>Name</th>
+                            <th>Count</th>
+                            <th>Data</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packet_table_body"></tbody>
+                </table>
+            </div>
+        </div>      
     </div>
 </div>
 
-<div class="col-lg-6">
-    <h2>Send Packets</h2>
-    <form>
-        <div class="form-group">
-            <label>Select Packet</label>
-            <select id="send-packet-list" class="form-control">
-                <option value="-1">Select packet to send...</option>
-            </select>
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">Send Packets</div>
+        <div class="panel-body">
+            <form>
+                <div class="form-group">
+                    <label>Select Packet</label>
+                    <select id="send-packet-list" class="form-control">
+                        <option value="-1">Select packet to send...</option>
+                    </select>
+                </div>
+
+                <div id="send-packet-fields" class="well">
+
+                    <div style="padding-bottom:20px" id="send-packet-inputs"></div>
+
+                    <button type="button" class="btn btn-sm btn-primary" id="send-packet">Send</button>
+                </div>
+            </form>
         </div>
-
-        <div id="send-packet-fields" class="well">
-
-            <div style="padding-bottom:20px" id="send-packet-inputs"></div>
-
-            <button type="button" class="btn btn-sm btn-primary" id="send-packet">Send</button>
-        </div>
-
-
-
-    </form>
-
+    </div>      
 </div>
 
 {% endblock %}
@@ -126,7 +130,7 @@
         select_packet();
     }
 
-    function getDisplay(data, field)
+    function get_display(data, field)
     {
         var disp = data.decoded[field].cvalue;
 
@@ -149,14 +153,16 @@
             for (var f in fields)
             {
                 var field = fields[f];
-                var disp = getDisplay(data, field);
-                $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
+                var disp = get_display(data, field);
+                $('td[data-field="' + data.address + '-' + field + '"]').html(disp).css("background-color", "#B0E2FF").animate({backgroundColor: 'transparent'}, 500);
             }
 
-            $('tr[data-address="'+data.address+'"]')
+            /*$('tr[data-address="'+data.address+'"]')
                 .css("background-color", "#B0E2FF");
+            
             $('tr[data-address="'+data.address+'"]')
-                .animate({backgroundColor: 'transparent'}, 500);
+                .animate({backgroundColor: 'transparent'}, 500);*/
+            
             var count = parseInt($('td[data-address-count="'+data.address+'"]').html())+1
             $('td[data-address-count="'+data.address+'"]').html(count);
         }
@@ -188,7 +194,7 @@
 
                 row.append($("<td></td>").html(field));
 
-                var disp = getDisplay(data, field);
+                var disp = get_display(data, field);
 
                 row.append($("<td></td>")
                                    .attr("data-field", data.address + '-' + field)
@@ -207,3 +213,5 @@
 </script>
 
 {% endblock %}
+
+{% block active_menu %}stream{% endblock %}
