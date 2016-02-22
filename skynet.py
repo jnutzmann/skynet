@@ -71,10 +71,10 @@ def db_query():
     query += 'FROM %s WHERE %s ' % (packet, time)
 
     if board:
-        query += "AND board='%s' " % board
+        query += "AND \"board\"='%s' " % board
 
     if name:
-        query += "AND name='%s' " % name
+        query += "AND \"name\"='%s' " % name
 
     if group:
         query += "GROUP BY %s " % group

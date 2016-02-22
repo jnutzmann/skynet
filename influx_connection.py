@@ -65,7 +65,8 @@ class SkynetInflux:
             try:
                 root = ".".join([s["tags"][0]["board"], s["tags"][0]["name"], s["name"]])
 
-                query = "SELECT * FROM %s WHERE board='%s' AND name='%s' LIMIT 1" % (s["name"], s["tags"][0]["board"], s["tags"][0]["name"])
+                query = "SELECT * FROM %s WHERE \"board\"='%s' AND \"name\"='%s' LIMIT 1" % (s["name"], s["tags"][0]["board"], s["tags"][0]["name"])
+                print(query)
                 rs = self.client.query(query)
                 qr = list(rs.get_points())[0]
 

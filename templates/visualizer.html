@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <div class="col-lg-1">
-                    <button class="btn btn-success" type="button" id="plot_btn">
+                    <button class="btn btn-primary" type="button" id="plot_btn">
                         <i class="fa fa-line-chart"></i> PLOT
                     </button>
                 </div>
@@ -74,11 +74,23 @@
     </div> 
 </div>
 
+<div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading">Plot</div>
+        <div class="panel-body">
+            <div id="plot" style="height:500px;"></div>
+        </div>
+    </div>
+
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 
 <script src="/static/packets.js"></script>
+
+<script language="javascript" type="text/javascript" src="/static/js/jquery.flot.min.js"></script>
 
 <script>
 
@@ -104,6 +116,7 @@
 
     $("#plot_btn").click(request_plot)
 
+
     function request_plot()
     {
         var meas = $("#measuremnt").val();
@@ -120,14 +133,15 @@
         if ($("#aggregator").val() != "") data.a = $("#aggregator").val();
         if ($("#fill").val() != "") data.f = $("#fill").val();
         
-        data.g = "time(1m)"
-        data.t = "time < (now() - 1h)"
+        //data.g = "time(1m)"
+        data.t = "time > (now() - 1h)"
 
         $.get("/db/query", data, show_plot, 'json');
     }
 
     function show_plot(data)
     {
+        $.plot("#plot", [data]);
         console.log(data)
     }
 
