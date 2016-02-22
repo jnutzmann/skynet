@@ -12,7 +12,7 @@
 {% block content %}
 {{ super() }}
 
-<div class="col-lg-12">
+<!-- <div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">Controls</div>
         <div class="panel-body">
@@ -27,20 +27,48 @@
             </div>
         </div>  
     </div> 
-</div>
+</div> -->
 
 <div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading">Add Query</div>
         <div class="panel-body">
             <label>Query</label>
-            <div class="form-group input-group">
-                <input class="form-control" type="text">
-                <span class="input-group-btn">
-                    <button class="btn btn-default" type="button">
-                        <i class="fa fa-bar-chart"></i>
+
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="form-group input-group">
+                        <span class="input-group-addon">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <select id="measuremnt" class="form-control">
+                            <option></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="form-group input-group">
+                        <span class="input-group-addon">
+                            <i class="fa fa-terminal"></i>
+                        </span>
+                        <select id="aggregator" class="form-control" type="text">
+                            <option></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="form-group input-group input-group-sm">
+                        <span class="input-group-addon">
+                            <i class="fa fa-tags"></i>
+                        </span>
+                        <input id="fill" class="form-control" type="text" placeholder="fill">
+                    </div>
+                </div>
+                <div class="col-lg-1">
+                    <button class="btn btn-success" type="button" id="plot_btn">
+                        <i class="fa fa-line-chart"></i> PLOT
                     </button>
-                </span>
+                </div>
             </div>
         </div>  
     </div> 
@@ -54,68 +82,54 @@
 
 <script>
 
-    function getDisplay(data, field)
+    var measurements = {{ measurements|safe }};
+    var aggregator = ['count', 'distinct', 'integral', 'mean', 'median', 'spread', 
+                      'sum', 'bottom', 'first', 'last', 'max', 'min', 'percentile', 
+                      'top', 'derivative','non_negative_derivative', 'stddev'];
+
+    for (i in measurements)
     {
-        var disp = data.decoded[field].cvalue;
-
-        if (data.decoded[field].decimals !== null) {
-            disp = disp.toFixed(data.decoded[field].decimals);
-        }
-
-        disp += data.decoded[field].unit
-        return disp;
+        var m = measurements[i];
+        $("#measuremnt").append($("<option></option>").html(m).val(m));
     }
 
-    function receive(data)
+    for (i in aggregator)
     {
-        decodePacket(data);
-        var fields = Object.keys(data.decoded);
+        var a = aggregator[i];
+        $("#aggregator").append($("<option></option>").html(a).val(a));
+    }
+    
+    $("#measuremnt").select2({ placeholder: "measurement" });
+    $("#aggregator").select2({ placeholder: "aggregator" });
 
-        if (($('tr[data-address="'+data.address+'"]').length) > 0)
-        {
+    $("#plot_btn").click(request_plot)
 
-            for (var f in fields)
-            {
-                var field = fields[f];
-                var disp = getDisplay(data, field);
-                $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
-            }
+    function request_plot()
+    {
+        var meas = $("#measuremnt").val();
+
+        if (meas == "") return;
+        meas = meas.split('.');
+        data = {
+            d: meas[3],
+            p: meas[2],
+            n: meas[1],
+            b: meas[0]
         }
-        else
-        {
-            for (var f in fields)
-            {
-                var field = fields[f];
-                var row = $("<tr></tr>");
 
-                if (f == 0)
-                {
-                    row.attr("data-address", data.address)
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.address));
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.board));
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.name));
-                }
+        if ($("#aggregator").val() != "") data.a = $("#aggregator").val();
+        if ($("#fill").val() != "") data.f = $("#fill").val();
+        
+        data.g = "time(1m)"
+        data.t = "time < (now() - 1h)"
 
-                row.append($("<td></td>").html(field));
-
-                var disp = getDisplay(data, field);
-
-                row.append($("<td></td>")
-                                   .attr("data-field", data.address + '-' + field)
-                                   .html(disp));
-
-                $("#packet_table_body").append(row);
-            }
-
-        }
+        $.get("/db/query", data, show_plot, 'json');
     }
 
+    function show_plot(data)
+    {
+        console.log(data)
+    }
 
 </script>
 

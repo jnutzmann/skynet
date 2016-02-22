@@ -6,8 +6,10 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{% block title %} Template {% endblock %} - SKYNET</title>
-        <link href="/static/css/bootstrap.css" rel="stylesheet" />
         <link href="/static/css/font-awesome.css" rel="stylesheet" />
+        <link href="/static/css/select2.css" rel="stylesheet" />
+        <link href="/static/css/bootstrap.css" rel="stylesheet" />
+
         <link href="/static/css/custom-styles.css" rel="stylesheet" />
         <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
     {% endblock %}
@@ -270,6 +272,7 @@
     <script src="/static/js/jquery-1.10.2.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
     <script src="/static/js/jquery.metisMenu.js"></script>
+    <script src="/static/js/select2.min.js"></script>
     <script>
     $('[name="{% block active_menu %}{% endblock %}"').addClass("active-menu");
     </script>

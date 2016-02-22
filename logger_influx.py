@@ -21,22 +21,15 @@ from influxdb import InfluxDBClient
 
 class SkyNetDBLogger(Thread):
 
-    def __init__(self, port, serial_connection):
+    def __init__(self, port, serial_connection, db):
         Thread.__init__(self)
         self.port = port
         self.q = Queue()
         self.s = serial_connection
+        self.db = db
         
         with open('static/packets.json') as f:
             self.decoder = SkynetDecode(f)
-
-        # TODO: make this configurable.
-        # connect to the influx server
-        self.client = InfluxDBClient('localhost', 8086, 'root', 'root', 'skynet')
-        
-        # check to see if the database exists.  If not, create it.
-        if "skynet" not in [d["name"] for d in self.client.get_list_database()]:
-            self.client.create_database('skynet')
 
         # create a listener that can be attached to a serial port.
         def listener(timestamp, address, rtr, data_length, data_bytes, origin="device"):
@@ -71,7 +64,11 @@ class SkyNetDBLogger(Thread):
                 while not self.q.empty():
                     points.append(self.q.get())
                 
-                self.client.write_points(points)
+                try:
+                    self.db.client.write_points(points)
+                except Exception as e:
+                    print(e)
+                
                 print(len(points))
 
         except Exception:

@@ -20,10 +20,18 @@ from queue import Queue
 from skynet_serial import SkyNetSerial, get_serial_ports
 from logger_influx import SkyNetDBLogger
 from server_sent_events import ServerSentEvent
-
+from influx_connection import SkynetInflux
+import strict_rfc3339
 
 app = Flask(__name__)
 serial_connections = {}
+db = SkynetInflux()
+
+aggregators = ['count', 'distinct', 'integral', 'mean', 'median', 'spread', 'sum', 'bottom',
+                'first', 'last', 'max', 'min', 'percentile', 'top', 'derivative',
+                'non_negative_derivative', 'stddev']
+
+# Non-functional: 'difference', 'floor', 'histogram', 'celing'
 
 @app.route('/')
 def index():
@@ -35,18 +43,53 @@ def index():
 
     return render_template('index.html', avail_ports=avail_ports, conn_ports=conn_ports)
 
-
 @app.route('/serial/view/<port>')
 def serial_view(port):
     if port not in serial_connections:
         abort(404)
     return render_template('default.html', s=serial_connections[port], port=port)
 
+@app.route('/db/query')
+def db_query():
+
+    aggregator = request.args.get('a')
+    field = request.args.get('d')
+    packet = request.args.get('p')
+    time = request.args.get('t')
+    group = request.args.get('g')
+    fill = request.args.get('f')
+    board = request.args.get('b')
+    name = request.args.get('n')
+
+    query = "SELECT "
+
+    if aggregator:
+        query += aggregator.upper() + '("%s") ' % field
+    else:
+        query += " %s " % field
+
+    query += 'FROM %s WHERE %s ' % (packet, time)
+
+    if board:
+        query += "AND board='%s' " % board
+
+    if name:
+        query += "AND name='%s' " % name
+
+    if group:
+        query += "GROUP BY %s " % group
+
+        if fill:
+            query += 'FILL(%s)' % fill
+
+    print(query)
+    results = db.get_results_for_plot(query)
+    return json.dumps(results)
 
 @app.route('/visualizer')
 def logalyzer_view():
-    return render_template('visualizer.html')
-
+    meas = db.get_measurements()
+    return render_template('visualizer.html', measurements=json.dumps(meas))
 
 # =============== API CALLS ==================
 
@@ -67,7 +110,7 @@ def serial_connect():
     s.start()
     serial_connections[_id] = s
 
-    logger = SkyNetDBLogger(_id, serial_connections[_id])
+    logger = SkyNetDBLogger(_id, serial_connections[_id], db)
     logger.start()
 
     return ""
