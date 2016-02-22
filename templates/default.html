@@ -154,13 +154,15 @@
             {
                 var field = fields[f];
                 var disp = get_display(data, field);
-                $('td[data-field="' + data.address + '-' + field + '"]').html(disp).css("background-color", "#B0E2FF").animate({backgroundColor: 'transparent'}, 500);
+                $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
+                $('td[data-field="' + data.address + '-' + field + '"]').css("background-color", "#B0E2FF");
+                $('td[data-field="' + data.address + '-' + field + '"]').animate({backgroundColor: 'transparent'}, 500);
             }
 
             /*$('tr[data-address="'+data.address+'"]')
-                .css("background-color", "#B0E2FF");
+                .css("background-color", "#B0E2FF");*/
             
-            $('tr[data-address="'+data.address+'"]')
+           /* $('tr[data-address="'+data.address+'"]')
                 .animate({backgroundColor: 'transparent'}, 500);*/
             
             var count = parseInt($('td[data-address-count="'+data.address+'"]').html())+1

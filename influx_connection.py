@@ -43,39 +43,27 @@ class SkynetInflux:
 
         return retval
 
-        # for s in series:
-        #     root = ".".join([s["tags"][0]["board"], s["tags"][0]["name"], s["name"]])
-
-        #     rs = self.client.query("SELECT * FROM %s WHERE board='%s' AND name='%s' LIMIT 1" %
-        #         (s["name"], s["tags"][0]["board"], s["tags"][0]["name"]))
-        #     qr = list(rs.get_points())[0]
-        #     subs = []
-
-        #     for k in qr.keys():
-        #         if k not in ['time', 'name', 'board', 'rtr']:
-        #             measurements.append(root + "." + k)
-
-        # return sorted(measurements)
-
     def get_measurements(self):
         series = self.client.get_list_series()
         measurements = []
 
         for s in series:
-            try:
-                root = ".".join([s["tags"][0]["board"], s["tags"][0]["name"], s["name"]])
+            print(s)
+            for t in s["tags"]:
+                try:
+                    root = ".".join([t["board"], t["name"], s["name"]])
 
-                query = "SELECT * FROM %s WHERE \"board\"='%s' AND \"name\"='%s' LIMIT 1" % (s["name"], s["tags"][0]["board"], s["tags"][0]["name"])
-                print(query)
-                rs = self.client.query(query)
-                qr = list(rs.get_points())[0]
+                    query = "SELECT * FROM %s WHERE \"board\"='%s' AND \"name\"='%s' LIMIT 1" % (s["name"], t["board"], t["name"])
+                    print(query)
+                    rs = self.client.query(query)
+                    qr = list(rs.get_points())[0]
 
-                for k in qr.keys():
-                    if k not in ['time', 'name', 'board', 'rtr', 'origin']:
-                        measurements.append(root + "." + k)
+                    for k in qr.keys():
+                        if k not in ['time', 'name', 'board', 'rtr', 'origin']:
+                            measurements.append(root + "." + k)
 
-            except Exception as e:
-                print(e)
+                except Exception as e:
+                    print(e)
 
         return sorted(measurements)
 
