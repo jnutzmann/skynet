@@ -35,6 +35,9 @@ class SkyNetDBLogger(Thread):
         def listener(timestamp, address, rtr, data_length, data_bytes, origin="device"):
             
             decoded = self.decoder.decode(address, rtr, data_bytes)
+            
+            if decoded is None:
+                return
 
             point = {
                 "measurement": decoded["name"],

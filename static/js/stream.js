@@ -44,9 +44,35 @@ function sendPacket(port, address, rtr, data) {
     });
 }
 
+function ascii_2_string(array) 
+{
+    var result = "";
+    for (var i = 0; i < array.length; i++) 
+    {
+        result += String.fromCharCode(array[i]);
+    }
+
+    return result;
+}
+
+function decodeSTDIO(packet) 
+{
+    $("#console_out").val($("#console_out").val() + ascii_2_string(packet.data));
+    $('#console_out').scrollTop($('#console_out')[0].scrollHeight);
+    console.log(ascii_2_string(packet.data));
+    console.log(packet.data);
+}
+
 function decodePacket(packet) {
 
-    if (!(packet.address in packetsByAddress)) return;
+    if (packet.address == 0x790)
+    {
+        decodeSTDIO(packet);
+        return false;
+    }
+
+
+    if (!(packet.address in packetsByAddress)) return false;
 
     var byte = 0;
     var format = packetsByAddress[packet.address];
@@ -131,6 +157,8 @@ function decodePacket(packet) {
 
         packet.decoded[fmtdata.name]['decimals'] = fmtdata['decimals']
     }
+
+    return true;
 }
 
 function encodePacket(packet)

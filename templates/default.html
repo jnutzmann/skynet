@@ -37,6 +37,15 @@
 
 <div class="col-lg-12">
     <div class="panel panel-default">
+        <div class="panel-heading">Console Output</div>
+        <div class="panel-body">
+            <textarea id="console_out" style="width:100%;" rows="10" readonly="true"></textarea>
+        </div>
+    </div>      
+</div>
+
+<div class="col-lg-12">
+    <div class="panel panel-default">
         <div class="panel-heading">Send Packets</div>
         <div class="panel-body">
             <form>
@@ -144,7 +153,8 @@
 
     function receive(data)
     {
-        decodePacket(data);
+        if (!decodePacket(data)) return;
+        
         var fields = Object.keys(data.decoded);
 
         if (($('tr[data-address="'+data.address+'"]').length) > 0)
