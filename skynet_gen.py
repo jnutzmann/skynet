@@ -316,6 +316,7 @@ static portTickType xLastPacketSent = 0;
 
 static uint8_t pending_buffer[MAX_SKYLAB_SERIAL_DATA_SIZE];
 static uint8_t bytes_waiting = 0;
+static bool send_in_progress = false;
 
 static bool stdio_serial_only;
 static bool skynet_stdio_enabled = false;
@@ -374,6 +375,7 @@ static void send_buffer( void )
 void skynet_stdio_send(const uint8_t *buf, size_t len)
 {
     if (skynet_stdio_enabled == DISABLE) return;
+    send_in_progress = true;
 
     for ( ; len > 0; len--)
     {
@@ -390,6 +392,8 @@ void skynet_stdio_send(const uint8_t *buf, size_t len)
             xLastPacketSent = xTaskGetTickCountFromISR();
         }
     }
+
+    send_in_progress = false;
 }
 
 size_t _write(int handle, const uint8_t *buf, size_t len)
@@ -427,7 +431,7 @@ void skynet_stdio_task ( void * pvParameters )
         // If we have data to send, send it.
         if (bytes_waiting > 0)
         {
-            send_buffer();
+            if (!send_in_progress) send_buffer();
         }
 
         xLastPacketSent = xTaskGetTickCount();
