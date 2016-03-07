@@ -398,8 +398,6 @@ void skynet_stdio_send(const uint8_t *buf, size_t len)
 
 size_t _write(int handle, const uint8_t *buf, size_t len)
 {
-    led_toggle(LED_BLUE);
-    orbit_helios_fatfs_debug2((uint8_t)len,true);
     if ((handle == -1) || (buf == NULL))
     {
         return 0;
