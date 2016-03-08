@@ -119,7 +119,7 @@ class SkyNetPacket:
             if field.type == "float":
                 for offset in range(0, c_types[field.type]):
                     bytes.append('.b[' + str(offset) + ']=data[' + str(offset + byte_num) + ']')
-                arguments.append('((SkylabDataUnion_t){' + ', '.join(bytes) + ' }).f')
+                arguments.append('((SkynetDataUnion_t){' + ', '.join(bytes) + ' }).f')
             else:
                 for offset in range(0, c_types[field.type]):
                     bytes.append('(data[' + str(offset + byte_num) + ']<<' + str(offset*8) + ')')
@@ -142,7 +142,7 @@ class SkyNetPacket:
         for field in self.data:
             for i in range(0, c_types[field.type]):
                 if field.type == "float":
-                    txt += '    p.data[' + str(dlc) + '] = ((SkylabDataUnion_t){.f=' + field.name + '}).b[' + str(i) + '];\n'
+                    txt += '    p.data[' + str(dlc) + '] = ((SkynetDataUnion_t){.f=' + field.name + '}).b[' + str(i) + '];\n'
                 else:
                     txt += '    p.data[' +str(dlc) + '] = ' + field.name + '>>' + str(i*8) + ';\n'
                 dlc += 1
@@ -213,7 +213,7 @@ typedef union {
     uint8_t b[4];
     uint32_t i;
     float f;
-} SkylabDataUnion_t;
+} SkynetDataUnion_t;
 
 
 // Application must define all of these handlers
@@ -235,7 +235,7 @@ inline void deorbit_packet_can( CanRxMsg* p )
     deorbit_packet( p->StdId, p->DLC, p->RTR, p->Data );
 }
 
-inline void deorbit_packet_serial( SkylabSerialPacket_t *p )
+inline void deorbit_packet_serial( SkynetSerialPacket_t *p )
 {
     deorbit_packet( p->address, p->length, p->request_to_receive, p->data );
 }
@@ -270,7 +270,7 @@ static void deorbit_packet( uint16_t addr, uint8_t len, bool rtr, uint8_t* data 
 #include "stm32f4xx_can.h"  // TOOD: this should not need the std periph
 
 void deorbit_packet_can( CanRxMsg* p );
-void deorbit_packet_serial( SkylabSerialPacket_t *p );
+void deorbit_packet_serial( SkynetSerialPacket_t *p );
 
 #endif // DEORBIT_H
 """
@@ -301,31 +301,31 @@ typedef union {
     uint8_t b[4];
     uint32_t i;
     float f;
-} SkylabDataUnion_t;
+} SkynetDataUnion_t;
 
 
 static void skynet_stdio_task ( void * pvParameters );
 
 
-static SkylabSerialSendFxn send_serial_fxn = NULL;
-static SkylabCanSendFxn send_can_fxn = NULL;
+static SkynetSerialSendFxn send_serial_fxn = NULL;
+static SkynetCanSendFxn send_can_fxn = NULL;
 
 static xTaskHandle skynet_stdio_task_handle;
 
 static portTickType xLastPacketSent = 0;
 
-static uint8_t pending_buffer[MAX_SKYLAB_SERIAL_DATA_SIZE];
+static uint8_t pending_buffer[MAX_SKYNET_SERIAL_DATA_SIZE];
 static uint8_t bytes_waiting = 0;
 static bool send_in_progress = false;
 
 static bool stdio_serial_only;
 static bool skynet_stdio_enabled = false;
-static uint8_t max_packet_size = MAX_SKYLAB_SERIAL_DATA_SIZE;
+static uint8_t max_packet_size = MAX_SKYNET_SERIAL_DATA_SIZE;
 
 static uint16_t stdio_tx_id;
 
 
-void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can)
+void orbit_init(SkynetSerialSendFxn send_serial, SkynetCanSendFxn send_can)
 {
     send_can_fxn = send_can;
     send_serial_fxn = send_serial;
@@ -337,7 +337,7 @@ void skynet_stdio_init( bool serial_only, uint16_t tx_id )
     xTaskCreate(skynet_stdio_task, "SKSTDIO", 1024, NULL, 2, &skynet_stdio_task_handle);
     skynet_stdio_enabled = true;
     stdio_tx_id = tx_id;
-    max_packet_size = serial_only ? MAX_SKYLAB_SERIAL_DATA_SIZE : 8;
+    max_packet_size = serial_only ? MAX_SKYNET_SERIAL_DATA_SIZE : 8;
     setbuf(stdout, NULL);  // make printf flush ASAP
 }
 
@@ -348,7 +348,7 @@ void skynet_stdio_deinit( void )
 
 static void send_buffer( void )
 {
-    SkylabSerialPacket_t p;
+    SkynetSerialPacket_t p;
 
     p.address = stdio_tx_id;
     p.request_to_receive = false;
@@ -444,7 +444,7 @@ void skynet_stdio_task ( void * pvParameters )
             txt += """
 void orbit_%s_%s( %s, bool serial_only )
 {
-    SkylabSerialPacket_t p;
+    SkynetSerialPacket_t p;
 
     p.address = 0x%x;
     p.request_to_receive = false;
@@ -492,23 +492,24 @@ void orbit_%s_%s( %s, bool serial_only )
 #include "stdio.h"
 #include "stm32f4xx_can.h"  // TOOD: this should not need the std periph
 
-#define MAX_SKYLAB_SERIAL_DATA_SIZE (15)
+#define MAX_SKYNET_SERIAL_DATA_SIZE (15)
 
 typedef struct {
     uint16_t address;
     uint16_t length;
     bool request_to_receive;
-    uint8_t data[MAX_SKYLAB_SERIAL_DATA_SIZE];
-} SkylabSerialPacket_t;
+    uint8_t data[MAX_SKYNET_SERIAL_DATA_SIZE];
+    uint32_t unix_timestamp;                      // optional, not used by skynet
+} SkynetSerialPacket_t;
 
-typedef void (*SkylabSerialSendFxn)(SkylabSerialPacket_t * packet);
-typedef void (*SkylabCanSendFxn)(CanTxMsg* packet);
+typedef void (*SkynetSerialSendFxn)(SkynetSerialPacket_t * packet);
+typedef void (*SkynetCanSendFxn)(CanTxMsg* packet);
 
 void skynet_stdio_init( bool serial_only, uint16_t tx_id );
 void skynet_stdio_deinit( void );
 void skynet_stdio_send( const uint8_t *buf, size_t len );
 
-void orbit_init(SkylabSerialSendFxn send_serial, SkylabCanSendFxn send_can);
+void orbit_init(SkynetSerialSendFxn send_serial, SkynetCanSendFxn send_can);
 
 """
         for p in sorted(packet_list.keys()):
