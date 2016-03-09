@@ -59,8 +59,6 @@ function decodeSTDIO(packet)
 {
     $("#console_out").val($("#console_out").val() + ascii_2_string(packet.data));
     $('#console_out').scrollTop($('#console_out')[0].scrollHeight);
-    console.log(ascii_2_string(packet.data));
-    console.log(packet.data);
 }
 
 function decodePacket(packet) {

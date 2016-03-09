@@ -37,6 +37,23 @@
 
 <div class="col-lg-12">
     <div class="panel panel-default">
+        <div class="panel-heading">Live Plots</div>
+        <div class="panel-body">
+            <div id="plot_container">
+                <div style="padding-bottom: 10px">
+                    <select class="measurement-name form-control" multiple="multiple" data-plotid="0"></select>
+                </div>  
+                <div id="test_plot" data-plotid="0" style="height:200px; width: 100%;" >
+                    
+                </div>
+            </div>
+            <button type="button" class="btn btn-success"><i class="fa fa-plus"></i> Add Plot</button>
+        </div>
+    </div>      
+</div>
+
+<div class="col-lg-12">
+    <div class="panel panel-default">
         <div class="panel-heading">Console Output</div>
         <div class="panel-body">
             <textarea id="console_out" style="width:100%;" rows="10" readonly="true"></textarea>
@@ -51,7 +68,7 @@
             <form>
                 <div class="form-group">
                     <label>Select Packet</label>
-                    <select id="send-packet-list" class="form-control">
+                    <select id="send-packet-list" class="form-control input-small">
                         <option value="-1">Select packet to send...</option>
                     </select>
                 </div>
@@ -73,8 +90,64 @@
 
 <script src="/static/packets.js"></script>
 <script src="/static/js/stream.js"></script>
+<script language="javascript" type="text/javascript" src="/static/js/jquery.flot.min.js"></script>
+<script language="javascript" type="text/javascript" src="/static/js/jquery.flot.time.min.js"></script>
 
 <script>
+
+    $.plot("#test_plot", [[]]);
+
+    var data_list = [];
+    var name_address = {};
+    var data_log = {};
+
+    var plots = {};
+
+    $(".measurement-name").change(function() {
+        
+        var names = $(this).val();
+        var plot_id = $(this).attr("data-plotid");
+        var plot_data = [];
+
+        for (i in names)
+        {
+            name=names[i];
+            plot_data.push(data_log[name]);
+        }
+
+        var p = $.plot("#test_plot", plot_data, {xaxis: {mode:"time"}});
+
+        update_fxn = function() {
+            p.setData(plot_data);
+            p.setupGrid();
+            p.draw();
+        }
+
+        plots[plot_id] = {update:update_fxn, }        
+    });
+
+    function update() {
+        for (p in plots)
+        {
+            plots[p].update();
+        }
+        setTimeout(update, 1000);
+    }
+    update();
+
+    function add_received_measurement(name, value, timestamp, address)
+    {
+        data_list.push({id:name, text:name});
+        $(".measurement-name").select2({data:data_list});
+        data_log[name] = [[timestamp*1000, value]];
+        name_address[name] = address;
+    }
+
+    function log_data(name, value, timestamp)
+    {
+        data_log[name].push([timestamp*1000, value]);
+        if (data_log[name].length > 5000) data_log[name].shift();
+    }
 
     function select_packet()
     {
@@ -147,7 +220,7 @@
             disp = disp.toFixed(data.decoded[field].decimals);
         }
 
-        disp += data.decoded[field].unit
+        disp += " " + data.decoded[field].unit
         return disp;
     }
 
@@ -163,6 +236,10 @@
             for (var f in fields)
             {
                 var field = fields[f];
+
+                log_data([data.board, data.name, field].join("."), 
+                    data.decoded[field].cvalue, data.timestamp);
+
                 var disp = get_display(data, field);
                 $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
                 $('td[data-field="' + data.address + '-' + field + '"]').css("background-color", "#B0E2FF");
@@ -183,6 +260,9 @@
             for (var f in fields)
             {
                 var field = fields[f];
+
+                var name = [data.board, data.name, field].join(".");
+                add_received_measurement(name,data.decoded[field].cvalue, data.timestamp, data.address);
 
                 var row = $("<tr></tr>");
 
@@ -214,7 +294,6 @@
 
                 $("#packet_table_body").append(row);
             }
-
         }
     }
 
