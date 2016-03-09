@@ -134,7 +134,7 @@
         if ($("#fill").val() != "") data.f = $("#fill").val();
         
         //data.g = "time(1m)"
-        data.t = "time > (now() - 1h)"
+        data.t = "time > (now() - 5m)"
 
         $.get("/db/query", data, show_plot, 'json');
     }
