@@ -5,6 +5,18 @@
 
 {% block head %}
     {{ super() }}
+   
+    <style>
+        .plot-select {
+            padding-bottom: 10px;
+        }
+        .live-plot {
+            height: 200px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    </style>
+
 {% endblock %}
 
 {% block header %} {{ s.name }} <small> {{ s.serial_port }} </small> {% endblock %}
@@ -40,14 +52,9 @@
         <div class="panel-heading">Live Plots</div>
         <div class="panel-body">
             <div id="plot_container">
-                <div style="padding-bottom: 10px">
-                    <select class="measurement-name form-control" multiple="multiple" data-plotid="0"></select>
-                </div>  
-                <div id="test_plot" data-plotid="0" style="height:200px; width: 100%;" >
-                    
-                </div>
+                
             </div>
-            <button type="button" class="btn btn-success"><i class="fa fa-plus"></i> Add Plot</button>
+            <button id="add-plot-button" type="button" class="btn btn-success"><i class="fa fa-plus"></i> Add Plot</button>
         </div>
     </div>      
 </div>
@@ -94,212 +101,297 @@
 <script language="javascript" type="text/javascript" src="/static/js/jquery.flot.time.min.js"></script>
 
 <script>
+    
 
-    $.plot("#test_plot", [[]]);
+var measurement_log = {};
+var measurements = [];
 
-    var data_list = [];
-    var name_address = {};
-    var data_log = {};
+var plot_count = 0;
 
-    var plots = {};
+var measurement_name_to_address = {};
 
-    $(".measurement-name").change(function() {
-        
-        var names = $(this).val();
-        var plot_id = $(this).attr("data-plotid");
+var address_to_handler = {};
+
+/*function update() 
+{
+    for (p in plots)
+    {
+        plots[p].update();
+    }
+    setTimeout(update, 1000);
+}
+update();*/
+
+
+// ============== LIVE PLOT & LOGGING =====================
+
+function clear_existing_handlers(plot_id)
+{
+    for (i in address_to_handler)
+    {
+        address_to_handler[i][plot_id] = null;
+    }
+}
+
+function add_live_plot()
+{
+    var container = $("#plot_container");
+
+    var select = $("<select></select>")
+            .attr("multiple", "multiple")
+            .addClass("form-control measurement-name");
+
+    container.append($("<div></div>").addClass("plot-select").append(select));
+    select.select2( {data:measurements} );
+    var plot = $("<div></div>").addClass("live-plot");
+
+    container.append(plot);
+
+    var plot_id = plot_count;
+    plot_count = plot_count + 1;
+
+    var p = $.plot( plot, [[]], { xaxis: { mode:"time" } } );
+    
+    var update_fxn = function () {
+        var names = select.val();
         var plot_data = [];
+
+        var addresses = [];
 
         for (i in names)
         {
-            name=names[i];
-            plot_data.push(data_log[name]);
+            var name = names[i];
+            plot_data.push(measurement_log[name]);
+            addresses.push(measurement_name_to_address[name]);
         }
 
-        var p = $.plot("#test_plot", plot_data, {xaxis: {mode:"time"}});
-
-        update_fxn = function() {
+        var refresh_fxn = function() {
             p.setData(plot_data);
             p.setupGrid();
             p.draw();
         }
 
-        plots[plot_id] = {update:update_fxn, }        
-    });
+        clear_existing_handlers(plot_id);
 
-    function update() {
-        for (p in plots)
+        for (i in addresses) 
         {
-            plots[p].update();
-        }
-        setTimeout(update, 1000);
-    }
-    update();
-
-    function add_received_measurement(name, value, timestamp, address)
-    {
-        data_list.push({id:name, text:name});
-        $(".measurement-name").select2({data:data_list});
-        data_log[name] = [[timestamp*1000, value]];
-        name_address[name] = address;
-    }
-
-    function log_data(name, value, timestamp)
-    {
-        data_log[name].push([timestamp*1000, value]);
-        if (data_log[name].length > 5000) data_log[name].shift();
-    }
-
-    function select_packet()
-    {
-        var selected = parseInt($("#send-packet-list").val());
-
-        if (packetsByAddress[selected] === undefined)
-        {
-            $("#send-packet-fields").hide();
-        }
-        else
-        {
-            $("#send-packet-fields").show();
-            $("#send-packet-inputs").html("");
-
-            var packet = packetsByAddress[selected];
-
-            for (var f in packet.data)
-            {
-                var field = packet.data[f];
-                var l = $("<label></label>").html(
-                    field.name + " (" + field.type + ") - " + field.description);
-                $("#send-packet-inputs").append(l);
-                var i = $("<input>").addClass("form-control")
-                    .attr("data-name",field.name).attr("type", "number");
-                $("#send-packet-inputs").append(i);
+            if (typeof address_to_handler[addresses[i]] == "undefined") {
+                address_to_handler[addresses[i]] = {}
             }
+
+            address_to_handler[addresses[i]][plot_id] = refresh_fxn;
         }
+
+        refresh_fxn();
+    };
+
+    select.change(update_fxn);
+}
+
+function get_measurement_name(data, field)
+{
+    return [data.board, data.name, field].join(".");
+}
+
+function log_new_measurement(data, field)
+{
+    var name = get_measurement_name(data, field)
+
+    // Add to list of measurements received
+    measurements.push({ id:name, text:name });
+
+    // Update dropdowns with new options.
+    $(".measurement-name").select2( {data:measurements} );
+
+    measurement_name_to_address[name] = data.address;
+
+    // Initialize and log.
+    measurement_log[name] = [];
+    log_measurement(data, field);
+}
+
+function log_measurement(data, field)
+{ 
+    var name = get_measurement_name(data, field)
+
+    measurement_log[name].push([data.timestamp*1000, data.decoded[field].cvalue]);
+    
+    if (measurement_log[name].length > 1000) {
+        measurement_log[name].shift();
     }
+}
 
-    function send_handler()
+// ============== SENDING PACKETS =====================
+
+function packet_select_change()
+{
+    var selected = parseInt($("#send-packet-list").val());
+
+    if (packetsByAddress[selected] === undefined)
     {
-        packet = {}
-        packet.decoded = {}
-        packet.address = parseInt($("#send-packet-list").val());
+        $("#send-packet-fields").hide();
+    }
+    else
+    {
+        $("#send-packet-fields").show();
+        $("#send-packet-inputs").html("");
 
-        var p = packetsByAddress[packet.address];
+        var packet = packetsByAddress[selected];
 
-        for (var f in p.data)
+        for (var f in packet.data)
         {
-            var field = p.data[f];
-            var val = $('input[data-name="' + field.name + '"]').val();
-            packet.decoded[field.name] = val;
+            var field = packet.data[f];
+            var l = $("<label></label>").html(
+                field.name + " (" + field.type + ") - " + field.description);
+            $("#send-packet-inputs").append(l);
+            var i = $("<input>").addClass("form-control")
+                .attr("data-name",field.name).attr("type", "number");
+            $("#send-packet-inputs").append(i);
         }
-        encodePacket(packet);
-        sendPacket("{{ port }}", packet.address, false, packet.data);
+    }
+}
 
+function populate_packet_select()
+{
+
+    for (var p in packetsByAddress) {
+        packet = packetsByAddress[p];
+
+        $("#send-packet-list").append(
+                $("<option></option>")
+                    .val(p)
+                    .html(p + " - " + packet.board + "_" + packet.name + " - " + packet.description));
     }
 
-    function populate_packets()
+    $("#send-packet-list").change(packet_select_change);
+    packet_select_change();
+}
+
+function send_packet_click()
+{
+    packet = {}
+    packet.decoded = {}
+    packet.address = parseInt($("#send-packet-list").val());
+
+    var p = packetsByAddress[packet.address];
+
+    for (var f in p.data)
     {
+        var field = p.data[f];
+        var val = $('input[data-name="' + field.name + '"]').val();
+        packet.decoded[field.name] = val;
+    }
+    encodePacket(packet);
+    sendPacket("{{ port }}", packet.address, false, packet.data);
 
-        for (var p in packetsByAddress) {
-            packet = packetsByAddress[p];
+}
 
-            $("#send-packet-list").append(
-                    $("<option></option>")
-                        .val(p)
-                        .html(p + " - " + packet.board + "_" + packet.name + " - " + packet.description));
-        }
 
-        $("#send-packet-list").change(select_packet);
-        select_packet();
+// ============== RECEIVING =====================
+
+function get_display_string(data, field)
+{
+    var disp = data.decoded[field].cvalue;
+
+    if (data.decoded[field].decimals !== null) {
+        disp = disp.toFixed(data.decoded[field].decimals);
     }
 
-    function get_display(data, field)
-    {
-        var disp = data.decoded[field].cvalue;
+    disp += " " + data.decoded[field].unit
+    return disp;
+}
 
-        if (data.decoded[field].decimals !== null) {
-            disp = disp.toFixed(data.decoded[field].decimals);
+function receive(data)
+{
+    if (!decodePacket(data)) return;
+    
+    var fields = Object.keys(data.decoded);
+
+    if (($('tr[data-address="'+data.address+'"]').length) > 0)
+    {
+
+        for (var f in fields)
+        {
+            var field = fields[f];
+
+            log_measurement(data, field);
+
+            var disp = get_display_string(data, field);
+            $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
+            $('td[data-field="' + data.address + '-' + field + '"]').css("background-color", "#B0E2FF");
+            $('td[data-field="' + data.address + '-' + field + '"]').animate({backgroundColor: 'transparent'}, 500);
         }
 
-        disp += " " + data.decoded[field].unit
-        return disp;
-    }
-
-    function receive(data)
-    {
-        if (!decodePacket(data)) return;
+        /*$('tr[data-address="'+data.address+'"]')
+            .css("background-color", "#B0E2FF");*/
         
-        var fields = Object.keys(data.decoded);
-
-        if (($('tr[data-address="'+data.address+'"]').length) > 0)
+       /* $('tr[data-address="'+data.address+'"]')
+            .animate({backgroundColor: 'transparent'}, 500);*/
+        
+        var count = parseInt($('td[data-address-count="'+data.address+'"]').html())+1
+        $('td[data-address-count="'+data.address+'"]').html(count);
+    }
+    else
+    {
+        for (var f in fields)
         {
+            var field = fields[f];
 
-            for (var f in fields)
+            log_new_measurement(data, field);
+
+            var row = $("<tr></tr>");
+
+            if (f == 0)
             {
-                var field = fields[f];
-
-                log_data([data.board, data.name, field].join("."), 
-                    data.decoded[field].cvalue, data.timestamp);
-
-                var disp = get_display(data, field);
-                $('td[data-field="' + data.address + '-' + field + '"]').html(disp);
-                $('td[data-field="' + data.address + '-' + field + '"]').css("background-color", "#B0E2FF");
-                $('td[data-field="' + data.address + '-' + field + '"]').animate({backgroundColor: 'transparent'}, 500);
-            }
-
-            /*$('tr[data-address="'+data.address+'"]')
-                .css("background-color", "#B0E2FF");*/
-            
-           /* $('tr[data-address="'+data.address+'"]')
-                .animate({backgroundColor: 'transparent'}, 500);*/
-            
-            var count = parseInt($('td[data-address-count="'+data.address+'"]').html())+1
-            $('td[data-address-count="'+data.address+'"]').html(count);
-        }
-        else
-        {
-            for (var f in fields)
-            {
-                var field = fields[f];
-
-                var name = [data.board, data.name, field].join(".");
-                add_received_measurement(name,data.decoded[field].cvalue, data.timestamp, data.address);
-
-                var row = $("<tr></tr>");
-
-                if (f == 0)
-                {
-                    row.attr("data-address", data.address)
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.address));
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.board));
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .html(data.name));
-                    row.append($("<td></td>")
-                                   .attr("rowspan", fields.length)
-                                   .attr("data-address-count", data.address)
-                                   .html("1"));
-                }
-
-                row.append($("<td></td>").html(field));
-
-                var disp = get_display(data, field);
-
+                row.attr("data-address", data.address)
                 row.append($("<td></td>")
-                                   .attr("data-field", data.address + '-' + field)
-                                   .html(disp));
-
-                $("#packet_table_body").append(row);
+                               .attr("rowspan", fields.length)
+                               .html(data.address));
+                row.append($("<td></td>")
+                               .attr("rowspan", fields.length)
+                               .html(data.board));
+                row.append($("<td></td>")
+                               .attr("rowspan", fields.length)
+                               .html(data.name));
+                row.append($("<td></td>")
+                               .attr("rowspan", fields.length)
+                               .attr("data-address-count", data.address)
+                               .html("1"));
             }
+
+            row.append($("<td></td>").html(field));
+
+            var disp = get_display_string(data, field);
+
+            row.append($("<td></td>")
+                               .attr("data-field", data.address + '-' + field)
+                               .html(disp));
+
+            $("#packet_table_body").append(row);
         }
     }
 
-    populate_packets();
-    streamPackets('{{ port }}', receive);
-    $("#send-packet").click(send_handler);
+    if (typeof address_to_handler[data.address] != "undefined")
+    {
+        for (i in address_to_handler[data.address]) {
+            var fxn = address_to_handler[data.address][i];
+            if (fxn != null) fxn();
+        }
+    }
+}
+
+
+// ============== LIVE PLOT & LOGGING =====================
+
+// Initialize Packet Sender
+populate_packet_select();
+$("#send-packet").click(send_packet_click);
+
+// Initialize Packet Receiever
+streamPackets('{{ port }}', receive);
+
+// Initialize Live Plot stuff
+$("#add-plot-button").click(add_live_plot);
 
 </script>
 
