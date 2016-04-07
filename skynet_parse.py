@@ -80,7 +80,6 @@ class SkynetDecode:
 
 		return packet
 
-
 	def print_defs(self):
 		print(self.packets_by_address)
 
