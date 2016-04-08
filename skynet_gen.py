@@ -349,10 +349,12 @@ typedef union {
 
 
 static void skynet_stdio_task ( void * pvParameters );
+static void send_serial_fxn_default(SkynetSerialPacket_t * packet);
+static void send_can_fxn_default(CanTxMsg* packet);
 
 
-static SkynetSerialSendFxn send_serial_fxn = NULL;
-static SkynetCanSendFxn send_can_fxn = NULL;
+static SkynetSerialSendFxn send_serial_fxn = send_serial_fxn_default;
+static SkynetCanSendFxn send_can_fxn = send_can_fxn_default;
 
 static xTaskHandle skynet_stdio_task_handle;
 
@@ -369,10 +371,30 @@ static uint8_t max_packet_size = MAX_SKYNET_SERIAL_DATA_SIZE;
 static uint16_t stdio_tx_id;
 
 
+
 void orbit_init(SkynetSerialSendFxn send_serial, SkynetCanSendFxn send_can)
 {
-    send_can_fxn = send_can;
-    send_serial_fxn = send_serial;
+    if (send_can == NULL) {
+        send_can_fxn = send_can_fxn_default;
+    } else {
+        send_can_fxn = send_can;
+    }
+
+    if (send_serial == NULL) {
+        send_serial_fxn = send_serial_fxn_default;
+    } else {
+        send_serial_fxn = send_serial;
+    }
+    
+}
+
+// Using these will make the code not fail if not inited / not implemented.
+static void send_serial_fxn_default(SkynetSerialPacket_t * packet) {
+    return;
+}
+
+static void send_can_fxn_default(CanTxMsg* packet) {
+    return;
 }
 
 void skynet_stdio_init( bool serial_only, uint16_t tx_id )
@@ -517,8 +539,8 @@ void orbit_%s_%s( %s, bool serial_only )
 """ % (packet.board, packet.name, packet.get_parameters(), packet.address, packet.data_length(), packet.get_data_copy())
 
         # TODO: add support for chunks.
-
-
+        with open(filename, 'w') as f:
+            f.write(txt)
 
 
     def generate_orbit_h(self, filename):
