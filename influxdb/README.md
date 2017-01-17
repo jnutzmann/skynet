@@ -1,0 +1,1 @@
+This code was taken from the [influxdb-python](https://github.com/influxdata/influxdb-python) repository and added to this project to reduce dependancies and guarentee correct version.  The version currently pulled by PIP is too old for the current version of influxdb.
