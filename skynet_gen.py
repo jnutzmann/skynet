@@ -337,7 +337,6 @@ void deorbit_packet_serial( SkynetSerialPacket_t *p );
 #include "orbit.h"
 #include "string.h"
 #include "task.h"
-#include "diagnostics.h"
 
 #define DEBUG_STDIO_PACKET_TIMOUT_MS    ( 50 )
 
